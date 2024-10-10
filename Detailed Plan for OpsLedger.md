@@ -4,137 +4,309 @@
 Build and deploy OpsLedger within three days. The project will include blockchain-based logging for CI/CD events, NFT rewards for successful deployments, and a dashboard for viewing these logs and achievements.
 
 ---
-
-### **Day 1: Setting Up the Blockchain Environment & Integrating with CI/CD**
-
-#### **Morning: Set up Blockchain Environment (Smart Contracts)**
-
-1. **Install Tools**:
-   - Install Solidity compiler for smart contract development.
-   ```bash
-   npm install -g solc
-   ```
-   - Install Hardhat for local blockchain development and deployment.
-   ```bash
-   npm install --save-dev hardhat
-   ```
-
-2. **Write Smart Contract for CI/CD Logs**:
-   Create a Solidity smart contract to log CI/CD pipeline events.
-   ```solidity
-   pragma solidity ^0.8.0;
-
-   contract OpsLedger {
-       struct Event {
-           uint timestamp;
-           string buildId;
-           string status; // Success/Fail
-           string developer;
-       }
-       
-       Event[] public events;
-
-       event NewEvent(uint indexed timestamp, string buildId, string status, string developer);
-
-       function logEvent(string memory _buildId, string memory _status, string memory _developer) public {
-           events.push(Event(block.timestamp, _buildId, _status, _developer));
-           emit NewEvent(block.timestamp, _buildId, _status, _developer);
-       }
-
-       function getEvents() public view returns (Event[] memory) {
-           return events;
-       }
-   }
-   ```
-
-3. **Deploy the Smart Contract**:
-   - Initialize Hardhat for contract deployment.
-   ```bash
-   npx hardhat
-   ```
-   - Deploy the smart contract using a deployment script:
-   ```javascript
-   async function main() {
-       const OpsLedger = await ethers.getContractFactory("OpsLedger");
-       const ledger = await OpsLedger.deploy();
-       console.log("Contract deployed to:", ledger.address);
-   }
-
-   main().catch((error) => {
-       console.error(error);
-       process.exitCode = 1;
-   });
-   ```
-
-4. **Connect to Base Testnet** (or preferred blockchain network):
-   Configure Hardhat to deploy on Base testnet:
-   ```bash
-   networks: {
-       baseTestnet: {
-           url: 'https://base-goerli.blockapi.com/v3/YOUR-API-KEY',
-           accounts: ['PRIVATE_KEY'],
-       },
-   }
-   ```
-
-5. **Deploy NFT Smart Contract**:
-   Write a second smart contract that issues NFTs for successful builds.
-   ```solidity
-   pragma solidity ^0.8.0;
-
-   import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-
-   contract DeploymentNFT is ERC721 {
-       uint public tokenCount;
-
-       constructor() ERC721("OpsLedger NFT", "OPLNFT") {}
-
-       function mintNFT(address _to) public returns (uint) {
-           tokenCount++;
-           _mint(_to, tokenCount);
-           return tokenCount;
-       }
-   }
-   ```
-   Deploy it using Hardhat in a similar manner.
+Organizing your project into well-structured directories will help you manage each component effectively and streamline the integration process. Below is a detailed guide on how to set up the directories for each component of **OpsLedger** and how to integrate them.
 
 ---
 
-#### **Afternoon: Integrate Smart Contract with CI/CD Pipeline**
+### **Project Directory Structure**
 
-1. **Set up Jenkins/GitLab CI/CD Pipeline**:
-   - Install Jenkins or GitLab CI on a cloud instance (e.g., AWS EC2).
+Here's a suggested directory structure for the OpsLedger project:
 
-2. **Install Web3.js in the CI/CD pipeline**:
-   Use Web3.js to interact with the blockchain smart contract:
+```
+OpsLedger/
+├── blockchain/
+│   ├── contracts/
+│   │   ├── OpsLedger.sol
+│   │   ├── DeploymentNFT.sol
+│   ├── scripts/
+│   │   ├── deploy.js
+│   │   ├── interact.js
+│   ├── test/
+│   ├── hardhat.config.js
+│   ├── package.json
+├── ci-cd/
+│   ├── Jenkinsfile
+│   ├── scripts/
+│   │   ├── logEvent.js
+│   │   ├── mintNFT.js
+│   ├── package.json
+├── dashboard/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Dashboard.js
+│   │   │   ├── NFTGallery.js
+│   │   ├── App.js
+│   ├── package.json
+├── infra/
+│   ├── terraform/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+├── README.md
+├── .gitignore
+```
+
+---
+
+### **Component Breakdown and Integration**
+
+#### **1. Blockchain Component (`/blockchain/`)**
+
+**Purpose**: Contains all blockchain-related code, including smart contracts and deployment scripts.
+
+**Directory Structure**:
+
+- `contracts/`: Smart contracts written in Solidity.
+  - `OpsLedger.sol`: Smart contract for logging CI/CD events.
+  - `DeploymentNFT.sol`: Smart contract for minting NFTs.
+- `scripts/`: Scripts to deploy and interact with smart contracts.
+  - `deploy.js`: Script to deploy contracts to the blockchain.
+  - `interact.js`: Script to interact with deployed contracts (optional).
+- `test/`: Unit tests for smart contracts.
+- `hardhat.config.js`: Configuration file for Hardhat.
+- `package.json`: Node.js project configuration.
+
+**Setup Steps**:
+
+1. **Initialize the Node.js Project**:
+
    ```bash
-   npm install web3
+   cd OpsLedger
+   mkdir blockchain
+   cd blockchain
+   npm init -y
    ```
 
-3. **Write Node.js Script to Log CI/CD Events**:
-   - Create a Node.js script that interacts with the smart contract to log pipeline actions (build, test, deploy).
-   ```javascript
-   const Web3 = require('web3');
-   const web3 = new Web3('https://base-goerli.blockapi.com/v3/YOUR-API-KEY');
+2. **Install Dependencies**:
 
-   const contractAddress = '0xYourContractAddress';
-   const abi = [...] // Smart contract ABI
-   const contract = new web3.eth.Contract(abi, contractAddress);
+   ```bash
+   npm install --save-dev hardhat @nomiclabs/hardhat-ethers ethers
+   npm install @openzeppelin/contracts
+   ```
+
+3. **Initialize Hardhat**:
+
+   ```bash
+   npx hardhat
+   ```
+
+   - Choose "Create a basic sample project".
+   - This will create some default files which you can modify or replace.
+
+4. **Write Smart Contracts**:
+
+   - **OpsLedger.sol**: Place this in the `contracts/` directory.
+
+     ```solidity
+     // SPDX-License-Identifier: MIT
+     pragma solidity ^0.8.0;
+
+     contract OpsLedger {
+         struct Event {
+             uint256 timestamp;
+             string buildId;
+             string status;
+             string developer;
+         }
+
+         Event[] public events;
+
+         event NewEvent(uint256 indexed timestamp, string buildId, string status, string developer);
+
+         function logEvent(string memory _buildId, string memory _status, string memory _developer) public {
+             events.push(Event(block.timestamp, _buildId, _status, _developer));
+             emit NewEvent(block.timestamp, _buildId, _status, _developer);
+         }
+
+         function getEvents() public view returns (Event[] memory) {
+             return events;
+         }
+     }
+     ```
+
+   - **DeploymentNFT.sol**: Also place this in the `contracts/` directory.
+
+     ```solidity
+     // SPDX-License-Identifier: MIT
+     pragma solidity ^0.8.0;
+
+     import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+     contract DeploymentNFT is ERC721 {
+         uint256 public tokenCount;
+
+         constructor() ERC721("OpsLedger NFT", "OPLNFT") {}
+
+         function mintNFT(address _to) public returns (uint256) {
+             tokenCount++;
+             _mint(_to, tokenCount);
+             return tokenCount;
+         }
+     }
+     ```
+
+5. **Configure Hardhat (`hardhat.config.js`)**:
+
+   Update the configuration to include the network you plan to deploy to (e.g., Base Testnet):
+
+   ```javascript
+   require("@nomiclabs/hardhat-ethers");
+
+   module.exports = {
+     defaultNetwork: "baseTestnet",
+     networks: {
+       baseTestnet: {
+         url: "https://base-goerli.blockapi.com/v3/YOUR-API-KEY",
+         accounts: ["0xYOUR_PRIVATE_KEY"],
+       },
+     },
+     solidity: "0.8.0",
+   };
+   ```
+
+6. **Write Deployment Scripts (`scripts/deploy.js`)**:
+
+   ```javascript
+   const hre = require("hardhat");
+
+   async function main() {
+     // Deploy OpsLedger contract
+     const OpsLedger = await hre.ethers.getContractFactory("OpsLedger");
+     const opsLedger = await OpsLedger.deploy();
+     await opsLedger.deployed();
+     console.log("OpsLedger deployed to:", opsLedger.address);
+
+     // Deploy DeploymentNFT contract
+     const DeploymentNFT = await hre.ethers.getContractFactory("DeploymentNFT");
+     const deploymentNFT = await DeploymentNFT.deploy();
+     await deploymentNFT.deployed();
+     console.log("DeploymentNFT deployed to:", deploymentNFT.address);
+   }
+
+   main()
+     .then(() => process.exit(0))
+     .catch((error) => {
+       console.error(error);
+       process.exit(1);
+     });
+   ```
+
+7. **Deploy Contracts**:
+
+   ```bash
+   npx hardhat run scripts/deploy.js --network baseTestnet
+   ```
+
+   - Record the deployed contract addresses; you'll need them for integration.
+
+8. **Share Contract ABIs and Addresses**:
+
+   - Copy the ABI files generated in `artifacts/contracts/` to a shared location or directly into the `ci-cd/` and `dashboard/` components.
+
+---
+
+#### **2. CI/CD Component (`/ci-cd/`)**
+
+**Purpose**: Contains the CI/CD pipeline configuration and scripts for logging events and minting NFTs.
+
+**Directory Structure**:
+
+- `Jenkinsfile`: Configuration for the Jenkins pipeline.
+- `scripts/`: Node.js scripts to interact with the blockchain.
+  - `logEvent.js`: Logs CI/CD events to the blockchain.
+  - `mintNFT.js`: Mints NFTs upon successful deployments.
+- `package.json`: Node.js project configuration.
+
+**Setup Steps**:
+
+1. **Initialize the Node.js Project**:
+
+   ```bash
+   cd OpsLedger
+   mkdir ci-cd
+   cd ci-cd
+   npm init -y
+   ```
+
+2. **Install Dependencies**:
+
+   ```bash
+   npm install web3 dotenv
+   ```
+
+3. **Create Environment Variables File (`.env`)**:
+
+   - Store sensitive information like private keys and API URLs.
+
+     ```
+     PRIVATE_KEY=your_private_key
+     INFURA_API_URL=https://base-goerli.blockapi.com/v3/YOUR-API-KEY
+     OPSLEDGER_CONTRACT_ADDRESS=deployed_opsledger_address
+     OPSLEDGER_ABI_PATH=path_to_opsledger_abi.json
+     DEPLOYMENTNFT_CONTRACT_ADDRESS=deployed_nft_contract_address
+     DEPLOYMENTNFT_ABI_PATH=path_to_deploymentnft_abi.json
+     ```
+
+4. **Write `logEvent.js` Script**:
+
+   ```javascript
+   require('dotenv').config();
+   const Web3 = require('web3');
+   const fs = require('fs');
+
+   const web3 = new Web3(new Web3.providers.HttpProvider(process.env.INFURA_API_URL));
+   const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
+   web3.eth.accounts.wallet.add(account);
+
+   const opsLedgerABI = JSON.parse(fs.readFileSync(process.env.OPSLEDGER_ABI_PATH));
+   const opsLedgerContract = new web3.eth.Contract(opsLedgerABI, process.env.OPSLEDGER_CONTRACT_ADDRESS);
 
    const logEventToBlockchain = async (buildId, status, developer) => {
-       await contract.methods.logEvent(buildId, status, developer)
-           .send({ from: '0xYourAddress', gas: 300000 });
+     try {
+       await opsLedgerContract.methods.logEvent(buildId, status, developer)
+         .send({ from: account.address, gas: 300000 });
+       console.log('Event logged successfully');
+     } catch (error) {
+       console.error('Error logging event:', error);
+     }
    };
 
-   const buildId = process.argv[2];
-   const status = process.argv[3];
-   const developer = process.argv[4];
+   const [,, buildId, status, developer] = process.argv;
 
    logEventToBlockchain(buildId, status, developer);
    ```
 
-4. **Add Script to Jenkins Pipeline**:
-   - Modify the Jenkinsfile to call this script after builds or tests:
+5. **Write `mintNFT.js` Script**:
+
+   ```javascript
+   require('dotenv').config();
+   const Web3 = require('web3');
+   const fs = require('fs');
+
+   const web3 = new Web3(new Web3.providers.HttpProvider(process.env.INFURA_API_URL));
+   const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
+   web3.eth.accounts.wallet.add(account);
+
+   const nftABI = JSON.parse(fs.readFileSync(process.env.DEPLOYMENTNFT_ABI_PATH));
+   const nftContract = new web3.eth.Contract(nftABI, process.env.DEPLOYMENTNFT_CONTRACT_ADDRESS);
+
+   const mintNFT = async (developerAddress) => {
+     try {
+       await nftContract.methods.mintNFT(developerAddress)
+         .send({ from: account.address, gas: 300000 });
+       console.log('NFT minted successfully');
+     } catch (error) {
+       console.error('Error minting NFT:', error);
+     }
+   };
+
+   const [,, developerAddress] = process.argv;
+
+   mintNFT(developerAddress);
+   ```
+
+6. **Configure the Jenkins Pipeline (`Jenkinsfile`)**:
+
    ```groovy
    pipeline {
        agent any
@@ -155,162 +327,318 @@ Build and deploy OpsLedger within three days. The project will include blockchai
            always {
                script {
                    def buildStatus = currentBuild.result ?: 'SUCCESS'
-                   def developer = "${env.BUILD_USER}"
-                   sh "node logEvent.js ${currentBuild.id} ${buildStatus} ${developer}"
+                   def developer = "${env.BUILD_USER_ID}"
+                   sh "node scripts/logEvent.js ${currentBuild.id} ${buildStatus} ${developer}"
+               }
+           }
+           success {
+               script {
+                   def developerAddress = "0xDeveloperEthereumAddress" // Map BUILD_USER_ID to Ethereum address
+                   sh "node scripts/mintNFT.js ${developerAddress}"
                }
            }
        }
    }
    ```
 
----
+7. **Integration with Blockchain**:
 
-### **Day 2: Building NFT System and Dashboard**
-
-#### **Morning: Develop NFT Rewards System**
-
-1. **Create Node.js Script to Mint NFTs**:
-   - Add a new script that mints NFTs when a build succeeds:
-   ```javascript
-   const Web3 = require('web3');
-   const web3 = new Web3('https://base-goerli.blockapi.com/v3/YOUR-API-KEY');
-   
-   const nftContractAddress = '0xYourNFTContractAddress';
-   const nftAbi = [...] // NFT contract ABI
-   const nftContract = new web3.eth.Contract(nftAbi, nftContractAddress);
-
-   const mintNFT = async (developerAddress) => {
-       await nftContract.methods.mintNFT(developerAddress)
-           .send({ from: '0xYourAddress', gas: 300000 });
-   };
-
-   const developerAddress = process.argv[2];
-   mintNFT(developerAddress);
-   ```
-
-2. **Integrate NFT Minting into Jenkins**:
-   - Modify the Jenkinsfile to mint an NFT upon successful deployment:
-   ```groovy
-   post {
-       success {
-           script {
-               def developerAddress = "${env.BUILD_USER_EMAIL}"
-               sh "node mintNFT.js ${developerAddress}"
-           }
-       }
-   }
-   ```
+   - Ensure the scripts have access to the correct ABI files and contract addresses.
+   - Use the `.env` file to manage configuration.
 
 ---
 
-#### **Afternoon: Develop Frontend Dashboard**
+#### **3. Dashboard Component (`/dashboard/`)**
 
-1. **Set Up React App**:
-   - Initialize a React app to display CI/CD logs and NFTs.
+**Purpose**: A React application that displays CI/CD logs and developer NFTs.
+
+**Directory Structure**:
+
+- `src/`:
+  - `components/`:
+    - `Dashboard.js`: Displays the CI/CD events.
+    - `NFTGallery.js`: Displays NFTs owned by developers.
+  - `App.js`: Main application file.
+- `package.json`: React project configuration.
+
+**Setup Steps**:
+
+1. **Initialize the React App**:
+
    ```bash
-   npx create-react-app opsledger-dashboard
-   cd opsledger-dashboard
+   cd OpsLedger
+   npx create-react-app dashboard
+   cd dashboard
    ```
 
-2. **Fetch Blockchain Data**:
-   Use `Ethers.js` to fetch logged events from the smart contract.
-   ```javascript
-   import { useState, useEffect } from 'react';
-   import { ethers } from 'ethers';
+2. **Install Dependencies**:
 
-   const contractAddress = '0xYourContractAddress';
-   const abi = [...] // Smart contract ABI
+   ```bash
+   npm install ethers dotenv
+   ```
+
+3. **Create Environment Variables File (`.env`)**:
+
+   ```
+   REACT_APP_INFURA_API_URL=https://base-goerli.blockapi.com/v3/YOUR-API-KEY
+   REACT_APP_OPSLEDGER_CONTRACT_ADDRESS=deployed_opsledger_address
+   REACT_APP_OPSLEDGER_ABI_PATH=src/abis/OpsLedger.json
+   REACT_APP_DEPLOYMENTNFT_CONTRACT_ADDRESS=deployed_nft_contract_address
+   REACT_APP_DEPLOYMENTNFT_ABI_PATH=src/abis/DeploymentNFT.json
+   ```
+
+4. **Copy ABI Files**:
+
+   - Place the ABI JSON files into `src/abis/`.
+
+5. **Develop `Dashboard.js` Component**:
+
+   ```javascript
+   import React, { useState, useEffect } from 'react';
+   import { ethers } from 'ethers';
+   import OpsLedgerABI from '../abis/OpsLedger.json';
 
    function Dashboard() {
-       const [events, setEvents] = useState([]);
+     const [events, setEvents] = useState([]);
 
-       useEffect(() => {
-           const provider = new ethers.providers.JsonRpcProvider('https://base-goerli.blockapi.com/v3/YOUR-API-KEY');
-           const contract = new ethers.Contract(contractAddress, abi, provider);
-           
-           async function fetchEvents() {
-               const logs = await contract.getEvents();
-               setEvents(logs);
-           }
+     useEffect(() => {
+       const fetchEvents = async () => {
+         const provider = new ethers.providers.JsonRpcProvider(process.env.REACT_APP_INFURA_API_URL);
+         const contract = new ethers.Contract(
+           process.env.REACT_APP_OPSLEDGER_CONTRACT_ADDRESS,
+           OpsLedgerABI,
+           provider
+         );
 
-           fetchEvents();
-       }, []);
+         try {
+           const eventList = await contract.getEvents();
+           setEvents(eventList);
+         } catch (error) {
+           console.error('Error fetching events:', error);
+         }
+       };
 
-       return (
-           <div>
-               <h1>OpsLedger CI/CD Logs</h1>
-               <table>
-                   <thead>
-                       <tr>
-                           <th>Timestamp</th>
-                           <th>Build ID</th>
-                           <th>Status</th>
-                           <th>Developer</th>
-                       </tr>
-                   </thead>
-                   <tbody>
-                       {events.map((event, index) => (
-                           <tr key={index}>
-                               <td>{new Date(event.timestamp * 1000).toLocaleString()}</td>
-                               <td>{event.buildId}</td>
-                               <td>{event.status}</td>
-                               <td>{event.developer}</td>
-                           </tr>
-                       ))}
-                   </tbody>
-               </table>
-           </div>
-       );
+       fetchEvents();
+     }, []);
+
+     return (
+       <div>
+         <h1>OpsLedger CI/CD Logs</h1>
+         <table>
+           <thead>
+             <tr>
+               <th>Timestamp</th>
+               <th>Build ID</th>
+               <th>Status</th>
+               <th>Developer</th>
+             </tr>
+           </thead>
+           <tbody>
+             {events.map((event, index) => (
+               <tr key={index}>
+                 <td>{new Date(event.timestamp.toNumber() * 1000).toLocaleString()}</td>
+                 <td>{event.buildId}</td>
+                 <td>{event.status}</td>
+                 <td>{event.developer}</td>
+               </tr>
+             ))}
+           </tbody>
+         </table>
+       </div>
+     );
    }
 
    export default Dashboard;
    ```
 
+6. **Develop `NFTGallery.js` Component** (Optional):
+
+   - Display NFTs owned by developers.
+
+7. **Integrate Components in `App.js`**:
+
+   ```javascript
+   import React from 'react';
+   import Dashboard from './components/Dashboard';
+   // import NFTGallery from './components/NFTGallery';
+
+   function App() {
+     return (
+       <div className="App">
+         <Dashboard />
+         {/* <NFTGallery /> */}
+       </div>
+     );
+   }
+
+   export default App;
+   ```
+
+8. **Run the Dashboard**:
+
+   ```bash
+   npm start
+   ```
+
 ---
 
-### **Day 3: Infrastructure Automation & Testing**
+#### **4. Infrastructure Automation (`/infra/`)**
 
-#### **Morning: Automate Infrastructure Deployment**
+**Purpose**: Contains Terraform scripts for automating the deployment of infrastructure.
 
-1. **Set Up Terraform for Infrastructure**:
-   - Write Terraform scripts for deploying the Jenkins server, React app, and blockchain nodes:
+**Directory Structure**:
+
+- `terraform/`:
+  - `main.tf`: Main configuration file.
+  - `variables.tf`: Variables used in configurations.
+  - `outputs.tf`: Output definitions.
+
+**Setup Steps**:
+
+1. **Write Terraform Configuration (`main.tf`)**:
+
    ```hcl
    provider "aws" {
      region = "us-west-2"
    }
 
-   resource "aws_instance" "jenkins" {
-     ami           = "ami-0c55b159cbfafe1f0"
+   resource "aws_instance" "jenkins_server" {
+     ami           = "ami-0c55b159cbfafe1f0" # Ubuntu Server 18.04 LTS
      instance_type = "t2.micro"
 
      tags = {
        Name = "JenkinsServer"
      }
+
+     # ... other configurations (security groups, key pairs, etc.)
+   }
+
+   resource "aws_instance" "dashboard_server" {
+     ami           = "ami-0c55b159cbfafe1f0"
+     instance_type = "t2.micro"
+
+     tags = {
+       Name = "DashboardServer"
+     }
+
+     # ... other configurations
    }
    ```
 
-2. **Deploy Infrastructure**:
-   - Run `terraform init` and `terraform apply` to automatically deploy the environment.
+2. **Initialize and Apply Terraform**:
+
+   ```bash
+   cd OpsLedger/infra/terraform
+   terraform init
+   terraform apply
+   ```
+
+3. **Configure Provisioning Scripts** (Optional):
+
+   - Use Terraform's provisioning capabilities to install dependencies and set up servers after they're created.
 
 ---
 
-#### **Afternoon: Final Testing & Launch**
+### **Integration Steps**
 
-1. **Test Full System**:
-   - Run builds and verify that:
-     - CI/CD pipeline logs are correctly recorded on the blockchain.
-     - NFTs are minted for successful deployments.
-     - The dashboard displays blockchain data accurately.
+1. **Sharing Contract Details**:
 
-2. **Bug Fixes and Optimization**:
-   - Address any issues found during testing and ensure smooth operations.
+   - Ensure that the contract ABIs and addresses are correctly shared between the blockchain, CI/CD, and dashboard components.
+   - Use a common location or script to distribute these details.
 
-3. **Launch**:
-   - Deploy the system to production and document the process for future maintenance and scaling.
+2. **Environment Variables**:
+
+   - Use `.env` files in each component to store configuration settings.
+   - Never commit `.env` files to version control; add them to `.gitignore`.
+
+3. **Version Control**:
+
+   - Initialize a Git repository at the root of the `OpsLedger` directory.
+
+     ```bash
+     cd OpsLedger
+     git init
+     ```
+
+   - Add a `.gitignore` file to exclude node modules and sensitive files.
+
+     ```
+     node_modules/
+     .env
+     ```
+
+4. **Documentation**:
+
+   - Update `README.md` with setup instructions for each component.
+   - Include details on how to install dependencies, deploy contracts, and run the application.
 
 ---
 
-### **Conclusion**
-OpsLedger will be fully built and deployed within three days, combining blockchain for transparent logging, NFTs for developer recognition
+### **Starting Point**
 
-, and a dashboard for real-time insights into the CI/CD process.
+1. **Begin with the Blockchain Component**:
+
+   - Navigate to `OpsLedger/blockchain/` and start by writing and deploying the smart contracts.
+
+2. **Proceed to CI/CD Component**:
+
+   - Move to `OpsLedger/ci-cd/` to set up the Node.js scripts and Jenkins pipeline.
+   - Ensure the CI/CD scripts can interact with the deployed contracts.
+
+3. **Develop the Dashboard**:
+
+   - Navigate to `OpsLedger/dashboard/` and build the React application.
+   - Test fetching data from the blockchain.
+
+4. **Set Up Infrastructure**:
+
+   - Use Terraform scripts in `OpsLedger/infra/terraform/` to deploy servers for Jenkins and the dashboard.
+
+5. **Testing and Integration**:
+
+   - Run test builds through Jenkins to ensure events are logged.
+   - Verify that the dashboard displays the logged events and NFTs correctly.
+
+---
+
+### **Best Practices**
+
+- **Modular Development**:
+
+  - Keep components decoupled to allow parallel development.
+
+- **Secure Handling of Sensitive Data**:
+
+  - Use environment variables for private keys and API URLs.
+  - Consider using a secrets manager for production environments.
+
+- **Automated Deployment**:
+
+  - Use scripts and configuration management to automate deployment steps wherever possible.
+
+- **Code Quality**:
+
+  - Implement linting and formatting tools.
+  - Write unit tests for smart contracts and scripts.
+
+- **Continuous Integration**:
+
+  - Set up automated builds and tests in Jenkins to catch issues early.
+
+---
+
+### **Summary**
+
+By following this structured approach, you'll create a cohesive project where each component—blockchain, CI/CD, dashboard, and infrastructure—is organized in its own directory with clear responsibilities. Integration is achieved through shared configurations and careful coordination of contract addresses and ABIs.
+
+---
+
+**Next Steps**:
+
+- **Day 1**: Start with the blockchain component and deploy the smart contracts.
+- **Day 1 Afternoon**: Set up the CI/CD scripts and integrate them with your Jenkins pipeline.
+- **Day 2 Morning**: Develop the NFT minting script and integrate it into the CI/CD pipeline.
+- **Day 2 Afternoon**: Build the dashboard and ensure it can read data from the blockchain.
+- **Day 3**: Automate the infrastructure deployment with Terraform, and perform end-to-end testing.
+
+Let me know if you need further assistance on any specific part of this setup!
