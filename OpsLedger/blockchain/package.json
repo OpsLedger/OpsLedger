@@ -1,0 +1,10 @@
+{
+  "name": "hardhat-project",
+  "devDependencies": {
+    "@nomiclabs/hardhat-waffle": "^1.0.0"
+  },
+  "dependencies": {
+    "ganache": "^7.7.7",
+    "hardhat": "^0.0.7"
+  }
+}
